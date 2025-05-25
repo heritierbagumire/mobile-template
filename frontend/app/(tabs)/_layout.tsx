@@ -48,9 +48,9 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="add-placeholder"
+        name="add_placeholder"
         options={{
-          title: '',
+          title: 'Placeholder',
           tabBarButton: () => (
             <TouchableOpacity style={styles.addButton} onPress={handleAddPress}>
               <View style={styles.addButtonInner}>

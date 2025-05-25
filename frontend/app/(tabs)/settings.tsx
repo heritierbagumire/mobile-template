@@ -24,7 +24,7 @@ import { Colors } from '@/constants/Colors';
 
 export default function SettingsScreen() {
   const { user, logout } = useAuthStore();
-  const [darkMode, setDarkMode] = React.useState(false);
+  const [darkMode, setDarkMode] = React.useState(true);
   const [notifications, setNotifications] = React.useState(true);
   
   const handleLogout = () => {

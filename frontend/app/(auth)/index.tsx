@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/auth-store';
 import { Colors } from '@/constants/Colors';
 
+const logo = require('@/assets/images/icon.png');
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -69,7 +70,7 @@ export default function LoginScreen() {
             >
                 <View style={styles.header}>
                     <Image
-                        source={{ uri: 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?q=80&w=2071&auto=format&fit=crop' }}
+                        source={logo}
                         style={styles.logo}
                     />
                     <Text style={styles.title}>Welcome Back</Text>
