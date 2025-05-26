@@ -4,17 +4,15 @@
     "slug": "transport-industry-app-template",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/splash-icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "splash": {
-  "image": "./assets/images/splash-icon.png",
-  "resizeMode": "contain",
-  "imageWidth": 200,
-   
-  "backgroundColor": "#ffffff"
-},
+    "splash": { 
+    "image": "./assets/images/splash-icon.png",
+    "resizeMode": "cover",
+    "backgroundColor": "#ffffff"
+   },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "app.rork.transport-industry-app-template"
