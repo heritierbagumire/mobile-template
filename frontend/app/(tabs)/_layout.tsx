@@ -4,6 +4,8 @@ import { Platform, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Home, PieChart, Plus, Layers, Settings } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors'; 
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { blue } from 'react-native-reanimated/lib/typescript/Colors';
 
 export default function TabLayout() {
   const router = useRouter();
@@ -13,14 +15,15 @@ export default function TabLayout() {
   };
 
   return (
+    // <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.main }}>
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors.primary.main,
         tabBarInactiveTintColor: Colors.text.light,
         tabBarStyle: {
-          borderTopWidth: 1,
+          // borderTopWidth: 0,
           borderTopColor: Colors.border,
-          height: Platform.OS === 'ios' ? 90 : 70,
+          height: Platform.OS === 'ios' ? 100 : 70,
           paddingBottom: Platform.OS === 'ios' ? 30 : 10,
           paddingTop: 10,
         },
@@ -30,7 +33,9 @@ export default function TabLayout() {
         headerTitleStyle: {
           color: Colors.text.primary,
           fontWeight: '600',
-        },
+          },
+        headerPressOpacity: 0.8,
+        headerShadowVisible: false,
       }}
     >
       <Tabs.Screen
@@ -74,7 +79,8 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <Settings size={24} color={color} />,
         }}
       />
-    </Tabs>
+      </Tabs>
+    // </SafeAreaView>
   );
 }
 
