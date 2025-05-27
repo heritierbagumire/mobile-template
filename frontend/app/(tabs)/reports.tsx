@@ -1,141 +1,45 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { useTransactionStore } from '@/store/transaction-store';
+import { useExpenseStore, Expense } from '@/store/transaction-store';
+import { useAuthStore } from '@/store/auth-store';
 import { Card } from '@/components/ui/Card';
 import { Colors } from '@/constants/Colors';
-import { CATEGORIES } from '@/constants/categories';
-import { CategoryIcon } from '@/components/transactions/CategoryIcon';
+
+function isToday(dateString?: string) {
+    if (!dateString) return false;
+    const today = new Date();
+    const date = new Date(dateString);
+    return (
+        date.getDate() === today.getDate() &&
+        date.getMonth() === today.getMonth() &&
+        date.getFullYear() === today.getFullYear()
+    );
+}
 
 export default function ReportsScreen() {
-    const {
-        transactions,
-        getTotalIncome,
-        getTotalExpenses,
-        getTransactionsByCategory,
-    } = useTransactionStore();
+    const { expenses } = useExpenseStore();
+    const { user } = useAuthStore();
 
-    const totalIncome = getTotalIncome();
-    const totalExpenses = getTotalExpenses();
-
-    const getCategoryTotal = (categoryId: string) => {
-        const categoryTransactions = getTransactionsByCategory(categoryId as any);
-        return categoryTransactions.reduce((total, transaction) => {
-            return total + transaction.amount;
-        }, 0);
-    };
-
-    const getExpenseCategories = () => {
-        return CATEGORIES.filter(category => {
-            if (category.id === 'income') return false;
-            const total = getCategoryTotal(category.id);
-            return total > 0;
-        }).sort((a, b) => {
-            return getCategoryTotal(b.id) - getCategoryTotal(a.id);
-        });
-    };
-
-    const getIncomeCategories = () => {
-        return CATEGORIES.filter(category => {
-            if (category.id !== 'income') return false;
-            const total = getCategoryTotal(category.id);
-            return total > 0;
-        });
-    };
-
-    const calculatePercentage = (amount: number, total: number) => {
-        if (total === 0) return 0;
-        return Math.round((amount / total) * 100);
-    };
+    const todaysExpenses = expenses.filter(
+        (exp: Expense) =>
+            isToday(exp.createdAt) &&
+            exp.username === user?.username
+    );
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-            <Text style={styles.title}>Financial Summary</Text>
-
-            <View style={styles.summaryContainer}>
-                <Card style={styles.summaryCard}>
-                    <Text style={styles.summaryLabel}>Income</Text>
-                    <Text style={[styles.summaryValue, styles.incomeValue]}>
-                        ${totalIncome.toFixed(2)}
-                    </Text>
-                </Card>
-
-                <Card style={styles.summaryCard}>
-                    <Text style={styles.summaryLabel}>Expenses</Text>
-                    <Text style={[styles.summaryValue, styles.expenseValue]}>
-                        ${totalExpenses.toFixed(2)}
-                    </Text>
-                </Card>
-            </View>
-
-            <Text style={styles.sectionTitle}>Expense Breakdown</Text>
-
-            {getExpenseCategories().length > 0 ? (
-                <Card variant="elevated" style={styles.breakdownCard}>
-                    {getExpenseCategories().map((category) => {
-                        const amount = getCategoryTotal(category.id);
-                        const percentage = calculatePercentage(amount, totalExpenses);
-
-                        return (
-                            <View key={category.id} style={styles.categoryItem}>
-                                <View style={styles.categoryInfo}>
-                                    <CategoryIcon category={category.id as any} size={20} />
-                                    <Text style={styles.categoryName}>{category.name}</Text>
-                                </View>
-
-                                <View style={styles.categoryStats}>
-                                    <View style={styles.percentageContainer}>
-                                        <View
-                                            style={[
-                                                styles.percentageBar,
-                                                { width: `${percentage}%` },
-                                            ]}
-                                        />
-                                    </View>
-                                    <Text style={styles.categoryAmount}>${amount.toFixed(2)}</Text>
-                                    <Text style={styles.categoryPercentage}>{percentage}%</Text>
-                                </View>
-                            </View>
-                        );
-                    })}
-                </Card>
+            <Text style={styles.title}>Today's Expenses</Text>
+            {todaysExpenses.length === 0 ? (
+                <Text style={styles.emptyText}>No expenses created by you today.</Text>
             ) : (
-                <Text style={styles.emptyText}>No expense data available</Text>
-            )}
-
-            <Text style={styles.sectionTitle}>Income Sources</Text>
-
-            {getIncomeCategories().length > 0 ? (
-                <Card variant="elevated" style={styles.breakdownCard}>
-                    {getIncomeCategories().map((category) => {
-                        const amount = getCategoryTotal(category.id);
-                        const percentage = calculatePercentage(amount, totalIncome);
-
-                        return (
-                            <View key={category.id} style={styles.categoryItem}>
-                                <View style={styles.categoryInfo}>
-                                    <CategoryIcon category={category.id as any} size={20} />
-                                    <Text style={styles.categoryName}>{category.name}</Text>
-                                </View>
-
-                                <View style={styles.categoryStats}>
-                                    <View style={styles.percentageContainer}>
-                                        <View
-                                            style={[
-                                                styles.percentageBar,
-                                                styles.incomeBar,
-                                                { width: `${percentage}%` },
-                                            ]}
-                                        />
-                                    </View>
-                                    <Text style={styles.categoryAmount}>${amount.toFixed(2)}</Text>
-                                    <Text style={styles.categoryPercentage}>{percentage}%</Text>
-                                </View>
-                            </View>
-                        );
-                    })}
-                </Card>
-            ) : (
-                <Text style={styles.emptyText}>No income data available</Text>
+                todaysExpenses.map((exp) => (
+                    <Card key={exp.id} style={styles.expenseCard}>
+                        <Text style={styles.expenseName}>{exp.name}</Text>
+                        <Text style={styles.expenseAmount}>${parseFloat(exp.amount).toFixed(2)}</Text>
+                        <Text style={styles.expenseDescription}>{exp.description}</Text>
+                        <Text style={styles.expenseDate}>{new Date(exp.createdAt!).toLocaleTimeString()}</Text>
+                    </Card>
+                ))
             )}
         </ScrollView>
     );
@@ -156,87 +60,37 @@ const styles = StyleSheet.create({
         color: Colors.text.primary,
         marginBottom: 16,
     },
-    summaryContainer: {
-        flexDirection: 'row',
-        marginBottom: 24,
-    },
-    summaryCard: {
-        flex: 1,
-        marginHorizontal: 4,
+    expenseCard: {
+        marginBottom: 16,
         padding: 16,
-        alignItems: 'center',
+        borderRadius: 12,
+        backgroundColor: Colors.background.card,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
     },
-    summaryLabel: {
-        fontSize: 14,
-        color: Colors.text.secondary,
-        marginBottom: 8,
-    },
-    summaryValue: {
-        fontSize: 20,
-        fontWeight: '700',
-    },
-    incomeValue: {
-        color: Colors.income,
-    },
-    expenseValue: {
-        color: Colors.expense,
-    },
-    sectionTitle: {
+    expenseName: {
         fontSize: 18,
         fontWeight: '600',
         color: Colors.text.primary,
-        marginBottom: 12,
-        marginTop: 8,
     },
-    breakdownCard: {
-        marginBottom: 24,
-    },
-    categoryItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
-        marginBottom: 16,
-    },
-    categoryInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        width: '30%',
-    },
-    categoryName: {
-        marginLeft: 8,
-        fontSize: 14,
-        color: Colors.text.primary,
-    },
-    categoryStats: {
-        flex: 1,
-        marginLeft: 12,
-    },
-    percentageContainer: {
-        height: 8,
-        backgroundColor: Colors.background.secondary,
-        borderRadius: 4,
-        overflow: 'hidden',
-        marginBottom: 4,
-    },
-    percentageBar: {
-        height: '100%',
-        backgroundColor: Colors.expense,
-        borderRadius: 4,
-    },
-    incomeBar: {
-        backgroundColor: Colors.income,
-    },
-    categoryAmount: {
-        fontSize: 14,
+    expenseAmount: {
+        fontSize: 16,
         fontWeight: '600',
-        color: Colors.text.primary,
+        color: Colors.expense,
+        marginTop: 4,
     },
-    categoryPercentage: {
+    expenseDescription: {
+        fontSize: 14,
+        color: Colors.text.secondary,
+        marginTop: 4,
+    },
+    expenseDate: {
         fontSize: 12,
         color: Colors.text.secondary,
+        marginTop: 2,
     },
     emptyText: {
         textAlign: 'center',

@@ -8,56 +8,60 @@ import {
     KeyboardAvoidingView,
     Platform,
     ScrollView,
+    Alert,
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Mail, Lock, User } from 'lucide-react-native';
+import { Mail, Lock } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/auth-store';
 import { Colors } from '@/constants/Colors'; 
+import axios from 'axios';
 
 const logo = require('@/assets/images/icon.png');
 export default function SignupScreen() {
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
-
-    const { signup, isLoading } = useAuthStore();
+    const [errors, setErrors] = useState<{ username?: string; password?: string }>({});
+    const { login, isLoading } = useAuthStore();
 
     const validateForm = () => {
-        const newErrors: { name?: string; email?: string; password?: string } = {};
-
-        if (!name) {
-            newErrors.name = 'Name is required';
+        const newErrors: { username?: string; password?: string } = {};
+        if (!username) {
+            newErrors.username = 'Username is required';
+        } else if (username.length < 3) {
+            newErrors.username = 'Username must be at least 3 characters';
         }
-
-        if (!email) {
-            newErrors.email = 'Email is required';
-        } else if (!/\S+@\S+\.\S+/.test(email)) {
-            newErrors.email = 'Email is invalid';
-        }
-
         if (!password) {
             newErrors.password = 'Password is required';
         } else if (password.length < 6) {
             newErrors.password = 'Password must be at least 6 characters';
         }
-
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
     const handleSignup = async () => {
         if (!validateForm()) return;
-
         try {
-            await signup(email, password, name);
+            // Check if username already exists
+            const check = await axios.get(`https://67ac71475853dfff53dab929.mockapi.io/api/v1/users?username=${username}`);
+            if (check.data && check.data.length > 0) {
+                setErrors({ username: 'Username already exists' });
+                return;
+            }
+            // Create user
+            await axios.post('https://67ac71475853dfff53dab929.mockapi.io/api/v1/users', {
+                username,
+                password,
+                createdAt: new Date().toISOString(),
+            });
+            // Log in the user
+            await login(username, password);
             router.replace('/(tabs)');
         } catch (error) {
-            console.error('Signup error:', error);
-            setErrors({ email: 'Failed to create account' });
+            Alert.alert('Signup error', 'Failed to create account.');
         }
     };
 
@@ -68,7 +72,6 @@ export default function SignupScreen() {
             keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
             <StatusBar style="dark" />
-
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 keyboardShouldPersistTaps="handled"
@@ -80,28 +83,16 @@ export default function SignupScreen() {
                     />
                     <Text style={styles.title}>Create Account</Text>
                 </View>
-
                 <View style={styles.form}>
                     <Input
-                        label="Name"
-                        placeholder="Enter your name"
-                        value={name}
-                        onChangeText={setName}
-                        leftIcon={<User size={20} color={Colors.text.secondary} />}
-                        error={errors.name}
-                    />
-
-                    <Input
-                        label="Email"
-                        placeholder="Enter email"
-                        value={email}
-                        onChangeText={setEmail}
-                        keyboardType="email-address"
+                        label="Username"
+                        placeholder="Enter username"
+                        value={username}
+                        onChangeText={setUsername}
                         autoCapitalize="none"
                         leftIcon={<Mail size={20} color={Colors.text.secondary} />}
-                        error={errors.email}
+                        error={errors.username}
                     />
-
                     <Input
                         label="Password"
                         placeholder="Enter password"
@@ -111,14 +102,12 @@ export default function SignupScreen() {
                         leftIcon={<Lock size={20} color={Colors.text.secondary} />}
                         error={errors.password}
                     />
-
                     <Button
                         title="Sign Up"
                         onPress={handleSignup}
                         isLoading={isLoading}
                         style={styles.signupButton}
                     />
-
                     <View style={styles.footer}>
                         <Text style={styles.footerText}>Already have an account? </Text>
                         <Link href="/" asChild>

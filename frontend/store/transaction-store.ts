@@ -9,13 +9,14 @@ export interface Expense {
   amount: string;
   description: string;
   createdAt?: string;
+  username?: string;
 }
 
 interface ExpenseState {
   expenses: Expense[];
   isLoading: boolean;
   fetchExpenses: () => Promise<void>;
-  addExpense: (expense: Omit<Expense, 'id' | 'createdAt'>) => Promise<void>;
+  addExpense: (expense: Omit<Expense, 'id'>) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
 }
 
@@ -39,7 +40,8 @@ export const useExpenseStore = create<ExpenseState>()(
       addExpense: async (expense) => {
         set({ isLoading: true });
         try {
-          const response = await axios.post('https://67ac71475853dfff53dab929.mockapi.io/api/v1/expenses', expense);
+          const payload = { ...expense, createdAt: new Date().toISOString() };
+          const response = await axios.post('https://67ac71475853dfff53dab929.mockapi.io/api/v1/expenses', payload);
           set({ expenses: [response.data, ...get().expenses], isLoading: false });
         } catch (error) {
           set({ isLoading: false });

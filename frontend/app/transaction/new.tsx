@@ -7,49 +7,49 @@ import {
     ScrollView,
     KeyboardAvoidingView,
     Platform,
-    TouchableOpacity,
+    Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useExpenseStore } from '@/store/transaction-store';
-import { TransactionTypeSelector } from '@/components/transactions/TransactionTypeSelector';
-import { CategorySelector } from '@/components/transactions/CategorySelector';
+import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/Button';
-import { TransactionType, CategoryType } from '@/types/transaction';
-import { Colors } from '@/constants/Colors'; 
-import { Calendar, FileText } from 'lucide-react-native';
+import { Colors } from '@/constants/Colors';
 
-export default function NewTransactionScreen() {
-    const [title, setTitle] = useState('');
+export default function AddExpenseScreen() {
+    const [name, setName] = useState('');
     const [amount, setAmount] = useState('');
-    const [type, setType] = useState<TransactionType>('expense');
-    const [category, setCategory] = useState<CategoryType>('transportation');
-    const [date, setDate] = useState(new Date());
-    const [notes, setNotes] = useState('');
-
+    const [description, setDescription] = useState('');
+    const [errors, setErrors] = useState<{ name?: string; amount?: string }>({});
     const { addExpense } = useExpenseStore();
+    const { user } = useAuthStore();
 
-    const handleAmountChange = (text: string) => {
-        // Only allow numbers and decimal point
-        const filteredText = text.replace(/[^0-9.]/g, '');
-        setAmount(filteredText);
+    const validate = () => {
+        const newErrors: { name?: string; amount?: string } = {};
+        if (!name.trim() || /^\d+$/.test(name.trim())) {
+            newErrors.name = 'Name must be a non-empty string and not just numbers.';
+        }
+        if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+            newErrors.amount = 'Amount must be a positive number.';
+        }
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
-    const handleSave = () => {
-        if (!title || !amount) {
-            // Show validation error
-            return;
+    const handleSave = async () => {
+        if (!validate()) return;
+        try {
+            await addExpense({
+                name: name.trim(),
+                amount: Number(amount).toFixed(2),
+                description: description.trim(),
+                username: user?.username || '',
+                createdAt: new Date().toISOString(),
+            });
+            Alert.alert('Success', 'Expense added!');
+            router.back();
+        } catch (e) {
+            Alert.alert('Error', 'Failed to add expense.');
         }
-
-        addExpense({
-            name: title,
-            amount: parseFloat(amount),
-            type,
-            category,
-            date,
-            notes,
-        });
-
-        router.back();
     };
 
     return (
@@ -60,77 +60,42 @@ export default function NewTransactionScreen() {
         >
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
+                keyboardShouldPersistTaps="always"
             >
-                <TransactionTypeSelector
-                    selectedType={type}
-                    onSelectType={setType}
+                <Text style={styles.label}>Name</Text>
+                <TextInput
+                    style={styles.input}
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Expense Name"
+                    placeholderTextColor={Colors.text.light}
+                    autoCapitalize="words"
                 />
+                {errors.name && <Text style={styles.error}>{errors.name}</Text>}
 
-                <View style={styles.amountContainer}>
-                    <Text style={styles.currencySymbol}>$</Text>
-                    <TextInput
-                        style={styles.amountInput}
-                        value={amount}
-                        onChangeText={handleAmountChange}
-                        placeholder="0.00"
-                        keyboardType="decimal-pad"
-                        placeholderTextColor={Colors.text.light}
-                    />
-                </View>
-
-                <View style={styles.inputContainer}>
-                    <TextInput
-                        style={styles.titleInput}
-                        value={title}
-                        onChangeText={setTitle}
-                        placeholder="Transaction Title"
-                        placeholderTextColor={Colors.text.light}
-                    />
-                </View>
-
-                <CategorySelector
-                    selectedCategory={category}
-                    onSelectCategory={setCategory}
+                <Text style={styles.label}>Amount</Text>
+                <TextInput
+                    style={styles.input}
+                    value={amount}
+                    onChangeText={setAmount}
+                    placeholder="0.00"
+                    keyboardType="decimal-pad"
+                    placeholderTextColor={Colors.text.light}
                 />
+                {errors.amount && <Text style={styles.error}>{errors.amount}</Text>}
 
-                <View style={styles.dateContainer}>
-                    <View style={styles.iconContainer}>
-                        <Calendar size={20} color={Colors.text.secondary} />
-                    </View>
-                    <Text style={styles.dateText}>
-                        {date.toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                        })}
-                    </Text>
-                    <TouchableOpacity style={styles.dateButton}>
-                        <Text style={styles.dateButtonText}>Change</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.notesContainer}>
-                    <View style={styles.notesHeader}>
-                        <View style={styles.iconContainer}>
-                            <FileText size={20} color={Colors.text.secondary} />
-                        </View>
-                        <Text style={styles.notesLabel}>Notes</Text>
-                    </View>
-                    <TextInput
-                        style={styles.notesInput}
-                        value={notes}
-                        onChangeText={setNotes}
-                        placeholder="Add notes here..."
-                        placeholderTextColor={Colors.text.light}
-                        multiline
-                        numberOfLines={4}
-                        textAlignVertical="top"
-                    />
-                </View>
+                <Text style={styles.label}>Description</Text>
+                <TextInput
+                    style={[styles.input, { height: 80 }]}
+                    value={description}
+                    onChangeText={setDescription}
+                    placeholder="Description (optional)"
+                    placeholderTextColor={Colors.text.light}
+                    multiline
+                />
 
                 <Button
-                    title="Save"
+                    title="Add Expense"
                     onPress={handleSave}
                     style={styles.saveButton}
                 />
@@ -147,89 +112,28 @@ const styles = StyleSheet.create({
     scrollContent: {
         padding: 16,
     },
-    amountContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 24,
-    },
-    currencySymbol: {
-        fontSize: 32,
-        fontWeight: '600',
-        color: Colors.text.primary,
-        marginRight: 4,
-    },
-    amountInput: {
-        fontSize: 48,
-        fontWeight: '700',
-        color: Colors.text.primary,
-        textAlign: 'center',
-        minWidth: 150,
-    },
-    inputContainer: {
-        borderWidth: 1,
-        borderColor: Colors.border,
-        borderRadius: 8,
-        marginBottom: 16,
-    },
-    titleInput: {
-        height: 48,
-        paddingHorizontal: 16,
+    label: {
         fontSize: 16,
+        fontWeight: '500',
         color: Colors.text.primary,
+        marginBottom: 4,
+        marginTop: 16,
     },
-    dateContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    input: {
         borderWidth: 1,
         borderColor: Colors.border,
         borderRadius: 8,
         padding: 12,
-        marginTop: 16,
-        marginBottom: 16,
-    },
-    iconContainer: {
-        marginRight: 12,
-    },
-    dateText: {
-        flex: 1,
         fontSize: 16,
         color: Colors.text.primary,
+        marginBottom: 8,
+        backgroundColor: Colors.background.card,
     },
-    dateButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        backgroundColor: Colors.background.secondary,
-        borderRadius: 4,
-    },
-    dateButtonText: {
-        fontSize: 14,
-        color: Colors.primary.main,
-        fontWeight: '500',
-    },
-    notesContainer: {
-        marginBottom: 24,
-    },
-    notesHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    error: {
+        color: Colors.status.error,
         marginBottom: 8,
     },
-    notesLabel: {
-        fontSize: 16,
-        fontWeight: '500',
-        color: Colors.text.primary,
-    },
-    notesInput: {
-        borderWidth: 1,
-        borderColor: Colors.border,
-        borderRadius: 8,
-        padding: 12,
-        minHeight: 100,
-        fontSize: 16,
-        color: Colors.text.primary,
-    },
     saveButton: {
-        marginTop: 8,
+        marginTop: 24,
     },
 });

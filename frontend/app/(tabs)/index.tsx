@@ -20,6 +20,12 @@ export default function HomeScreen() {
   const [page, setPage] = useState(1);
   const [showedExpenses, setShowedExpenses] = useState<Expense[]>([]);
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/');
+    }
+  }, [isAuthenticated]);
+
   // Notification on login
   useEffect(() => {
     if (isAuthenticated && user?.username) {
@@ -38,8 +44,11 @@ export default function HomeScreen() {
   }, [expenses, search, page]);
 
   // Summary calculations
-  const total = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
-  const avg = expenses.length ? total / expenses.length : 0;
+  const total = expenses.reduce((sum, exp) => {
+    const amt = parseFloat(exp.amount);
+    return !isNaN(amt) ? sum + amt : sum;
+  }, 0);
+  const avg = expenses.length && total > 0 ? total / expenses.length : 0;
   const count = expenses.length;
 
   // Sort expenses by date (newest first)
@@ -94,11 +103,11 @@ export default function HomeScreen() {
         <Text style={styles.summaryTitle}>Dashboard Summary</Text>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Total Expenses:</Text>
-          <Text style={styles.summaryValue}>${total.toFixed(2)}</Text>
+          <Text style={styles.summaryValue}>${isNaN(total) ? '0.00' : total.toFixed(2)}</Text>
         </View>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Average Expense:</Text>
-          <Text style={styles.summaryValue}>${avg.toFixed(2)}</Text>
+          <Text style={styles.summaryValue}>${isNaN(avg) ? '0.00' : avg.toFixed(2)}</Text>
         </View>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Number of Expenses:</Text>

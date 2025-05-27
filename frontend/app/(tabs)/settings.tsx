@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -21,11 +21,18 @@ import {
 } from 'lucide-react-native';
 import { useAuthStore } from '@/store/auth-store';
 import { Colors } from '@/constants/Colors';
+import { router } from 'expo-router';
 
 export default function SettingsScreen() {
-  const { user, logout } = useAuthStore();
+  const { user, logout, isAuthenticated } = useAuthStore();
   const [darkMode, setDarkMode] = React.useState(true);
   const [notifications, setNotifications] = React.useState(true);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/');
+    }
+  }, [isAuthenticated]);
   
   const handleLogout = () => {
     Alert.alert(
@@ -35,7 +42,10 @@ export default function SettingsScreen() {
         { text: 'Cancel', style: 'cancel' },
         { 
           text: 'Logout', 
-          onPress: () => logout(),
+          onPress: () => {
+            logout();
+            router.replace('/(auth)')
+          },
           style: 'destructive',
         },
       ]
@@ -69,12 +79,11 @@ export default function SettingsScreen() {
       <View style={styles.profileSection}>
         <View style={styles.avatarContainer}>
           <Text style={styles.avatarText}>
-            {user?.name?.charAt(0).toUpperCase() || 'U'}
+            {user?.username?.charAt(0).toUpperCase() || 'U'}
           </Text>
         </View>
         <View style={styles.profileInfo}>
-          <Text style={styles.profileName}>{user?.name || 'User'}</Text>
-          <Text style={styles.profileEmail}>{user?.email || 'user@example.com'}</Text>
+          <Text style={styles.profileName}>{user?.username || 'User'}</Text>
         </View>
       </View>
       
