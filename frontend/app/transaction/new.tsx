@@ -10,7 +10,7 @@ import {
     TouchableOpacity,
 } from 'react-native';
 import { router } from 'expo-router';
-import { useTransactionStore } from '@/store/transaction-store';
+import { useExpenseStore } from '@/store/transaction-store';
 import { TransactionTypeSelector } from '@/components/transactions/TransactionTypeSelector';
 import { CategorySelector } from '@/components/transactions/CategorySelector';
 import { Button } from '@/components/ui/Button';
@@ -26,7 +26,7 @@ export default function NewTransactionScreen() {
     const [date, setDate] = useState(new Date());
     const [notes, setNotes] = useState('');
 
-    const { addTransaction } = useTransactionStore();
+    const { addExpense } = useExpenseStore();
 
     const handleAmountChange = (text: string) => {
         // Only allow numbers and decimal point
@@ -40,8 +40,8 @@ export default function NewTransactionScreen() {
             return;
         }
 
-        addTransaction({
-            title,
+        addExpense({
+            name: title,
             amount: parseFloat(amount),
             type,
             category,

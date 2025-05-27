@@ -6,6 +6,7 @@ import { Home, PieChart, Plus, Layers, Settings } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors'; 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { blue } from 'react-native-reanimated/lib/typescript/Colors';
+import { useExpenseStore } from '@/store/transaction-store';
 
 export default function TabLayout() {
   const router = useRouter();

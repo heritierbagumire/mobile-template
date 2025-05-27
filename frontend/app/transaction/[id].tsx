@@ -7,25 +7,31 @@ import {
     Alert,
     TouchableOpacity,
     Platform,
+    TextInput,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { Trash2, Edit2 } from 'lucide-react-native';
-import { useTransactionStore } from '@/store/transaction-store';
-import { getCategoryById } from '@/constants/categories';
-import { CategoryIcon } from '@/components/transactions/CategoryIcon';
+import { Trash2, Edit2, Save } from 'lucide-react-native';
+import { useExpenseStore, Expense } from '@/store/transaction-store';
 import { Button } from '@/components/ui/Button';
 import { Colors } from '@/constants/Colors';
 
-export default function TransactionDetailScreen() {
+export default function ExpenseDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
-    const { transactions, deleteTransaction } = useTransactionStore();
+    const { expenses, deleteExpense, addExpense } = useExpenseStore();
+    const [isEditing, setIsEditing] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
-    const transaction = transactions.find(t => t.id === id);
+    const expense = expenses.find(e => e.id === id);
+    const [form, setForm] = useState<Partial<Expense>>({
+        name: expense?.name || '',
+        amount: expense?.amount || '',
+        description: expense?.description || '',
+    });
 
-    if (!transaction) {
+    if (!expense) {
         return (
             <View style={styles.notFoundContainer}>
-                <Text style={styles.notFoundText}>Transaction not found</Text>
+                <Text style={styles.notFoundText}>Expense not found</Text>
                 <Button
                     title="Go Back"
                     onPress={() => router.back()}
@@ -35,30 +41,27 @@ export default function TransactionDetailScreen() {
         );
     }
 
-    const { title, amount, type, category, date, notes } = transaction;
-    const categoryData = getCategoryById(category);
-
-    const formattedDate = new Date(date).toLocaleDateString('en-US', {
+    const formattedDate = new Date(expense.createdAt || '').toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric',
     });
 
-    const amountColor = type === 'income' ? Colors.income : Colors.expense;
-    const amountPrefix = type === 'income' ? '+' : '-';
-
-    const handleDelete = () => {
+    const handleDelete = async () => {
         Alert.alert(
-            'Delete Transaction',
-            'Are you sure you want to delete this transaction?',
+            'Delete Expense',
+            'Are you sure you want to delete this expense?',
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
                     text: 'Delete',
                     style: 'destructive',
-                    onPress: () => {
-                        deleteTransaction(id);
+                    onPress: async () => {
+                        setIsLoading(true);
+                        await deleteExpense(id as string);
+                        setIsLoading(false);
+                        Alert.alert('Deleted', 'Expense deleted!');
                         router.back();
                     },
                 },
@@ -67,68 +70,111 @@ export default function TransactionDetailScreen() {
     };
 
     const handleEdit = () => {
-        // In a real app, this would navigate to an edit screen
-        Alert.alert('Edit Transaction', 'This feature is not implemented yet.');
+        setIsEditing(true);
+    };
+
+    const handleSave = async () => {
+        if (!form.name || !form.amount) {
+            Alert.alert('Validation', 'Name and amount are required.');
+            return;
+        }
+        setIsLoading(true);
+        try {
+            // PATCH to API
+            const updatedExpense = { ...expense, ...form };
+            await fetch(`https://67ac71475853dfff53dab929.mockapi.io/api/v1/expenses/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedExpense),
+            });
+            // Optimistically update in Zustand
+            await deleteExpense(id as string);
+            await addExpense({
+                name: form.name!,
+                amount: form.amount!,
+                description: form.description || '',
+            });
+            setIsEditing(false);
+            Alert.alert('Updated', 'Expense updated!');
+        } catch (e) {
+            Alert.alert('Error', 'Failed to update expense.');
+        }
+        setIsLoading(false);
     };
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
             <View style={styles.header}>
-                <View style={styles.categoryIconContainer}>
-                    <CategoryIcon category={category} size={32} />
+                <View style={styles.iconCircle}>
+                    <Text style={styles.iconText}>💸</Text>
                 </View>
-                <Text style={styles.title}>{title}</Text>
-                <Text style={[styles.amount, { color: amountColor }]}>
-                    {amountPrefix}${amount.toFixed(2)}
-                </Text>
+                {isEditing ? (
+                    <TextInput
+                        style={styles.titleInput}
+                        value={form.name}
+                        onChangeText={v => setForm(f => ({ ...f, name: v }))}
+                        placeholder="Expense Name"
+                    />
+                ) : (
+                    <Text style={styles.title}>{expense.name}</Text>
+                )}
+                {isEditing ? (
+                    <TextInput
+                        style={styles.amountInput}
+                        value={form.amount}
+                        onChangeText={v => setForm(f => ({ ...f, amount: v }))}
+                        placeholder="Amount"
+                        keyboardType="numeric"
+                    />
+                ) : (
+                    <Text style={[styles.amount, { color: Colors.expense }]}>-${parseFloat(expense.amount).toFixed(2)}</Text>
+                )}
             </View>
 
             <View style={styles.detailsContainer}>
                 <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Type</Text>
-                    <Text style={styles.detailValue}>
-                        {type === 'income' ? 'Income' : 'Expense'}
-                    </Text>
-                </View>
-
-                <View style={styles.divider} />
-
-                <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Category</Text>
-                    <Text style={styles.detailValue}>{categoryData.name}</Text>
-                </View>
-
-                <View style={styles.divider} />
-
-                <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Date</Text>
                     <Text style={styles.detailValue}>{formattedDate}</Text>
                 </View>
-
-                {notes && (
-                    <>
-                        <View style={styles.divider} />
-
-                        <View style={styles.notesContainer}>
-                            <Text style={styles.detailLabel}>Notes</Text>
-                            <Text style={styles.notesText}>{notes}</Text>
-                        </View>
-                    </>
-                )}
+                <View style={styles.divider} />
+                <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Description</Text>
+                    {isEditing ? (
+                        <TextInput
+                            style={styles.descriptionInput}
+                            value={form.description}
+                            onChangeText={v => setForm(f => ({ ...f, description: v }))}
+                            placeholder="Description"
+                        />
+                    ) : (
+                        <Text style={styles.detailValue}>{expense.description}</Text>
+                    )}
+                </View>
             </View>
 
             <View style={styles.actionsContainer}>
-                <TouchableOpacity
-                    style={[styles.actionButton, styles.editButton]}
-                    onPress={handleEdit}
-                >
-                    <Edit2 size={20} color={Colors.primary.main} />
-                    <Text style={[styles.actionText, styles.editText]}>Edit</Text>
-                </TouchableOpacity>
-
+                {isEditing ? (
+                    <TouchableOpacity
+                        style={[styles.actionButton, styles.saveButton]}
+                        onPress={handleSave}
+                        disabled={isLoading}
+                    >
+                        <Save size={20} color={Colors.primary.main} />
+                        <Text style={[styles.actionText, styles.saveText]}>Save</Text>
+                    </TouchableOpacity>
+                ) : (
+                    <TouchableOpacity
+                        style={[styles.actionButton, styles.editButton]}
+                        onPress={handleEdit}
+                    >
+                        <Edit2 size={20} color={Colors.primary.main} />
+                        <Text style={[styles.actionText, styles.editText]}>Edit</Text>
+                    </TouchableOpacity>
+                )}
                 <TouchableOpacity
                     style={[styles.actionButton, styles.deleteButton]}
                     onPress={handleDelete}
+                    disabled={isLoading}
                 >
                     <Trash2 size={20} color={Colors.status.error} />
                     <Text style={[styles.actionText, styles.deleteText]}>Delete</Text>
@@ -150,7 +196,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 24,
     },
-    categoryIconContainer: {
+    iconCircle: {
         width: 72,
         height: 72,
         borderRadius: 36,
@@ -170,15 +216,38 @@ const styles = StyleSheet.create({
             },
         }),
     },
+    iconText: {
+        fontSize: 32,
+    },
     title: {
         fontSize: 24,
         fontWeight: '600',
         color: Colors.text.primary,
         marginBottom: 8,
     },
+    titleInput: {
+        fontSize: 24,
+        fontWeight: '600',
+        color: Colors.text.primary,
+        marginBottom: 8,
+        borderBottomWidth: 1,
+        borderColor: Colors.border,
+        width: '80%',
+        textAlign: 'center',
+    },
     amount: {
         fontSize: 32,
         fontWeight: '700',
+    },
+    amountInput: {
+        fontSize: 32,
+        fontWeight: '700',
+        color: Colors.expense,
+        borderBottomWidth: 1,
+        borderColor: Colors.border,
+        width: '50%',
+        textAlign: 'center',
+        marginBottom: 8,
     },
     detailsContainer: {
         backgroundColor: Colors.background.card,
@@ -200,61 +269,73 @@ const styles = StyleSheet.create({
     detailRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        paddingVertical: 12,
+        alignItems: 'center',
+        marginBottom: 8,
     },
     detailLabel: {
-        fontSize: 16,
         color: Colors.text.secondary,
+        fontWeight: '500',
+        fontSize: 15,
     },
     detailValue: {
-        fontSize: 16,
-        fontWeight: '500',
         color: Colors.text.primary,
+        fontSize: 15,
+        fontWeight: '500',
     },
     divider: {
         height: 1,
         backgroundColor: Colors.border,
+        marginVertical: 8,
     },
-    notesContainer: {
-        paddingVertical: 12,
-    },
-    notesText: {
-        fontSize: 16,
+    descriptionInput: {
         color: Colors.text.primary,
-        marginTop: 8,
-        lineHeight: 22,
+        fontSize: 15,
+        borderBottomWidth: 1,
+        borderColor: Colors.border,
+        width: '100%',
+        marginTop: 2,
     },
     actionsContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        marginTop: 16,
     },
     actionButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 12,
+        paddingVertical: 10,
         paddingHorizontal: 24,
         borderRadius: 8,
-        flex: 1,
-        marginHorizontal: 8,
-    },
-    editButton: {
         backgroundColor: Colors.background.card,
-        borderWidth: 1,
-        borderColor: Colors.primary.main,
-    },
-    deleteButton: {
-        backgroundColor: Colors.background.card,
-        borderWidth: 1,
-        borderColor: Colors.status.error,
+        marginHorizontal: 4,
+        ...Platform.select({
+            ios: {
+                shadowColor: Colors.shadow,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.08,
+                shadowRadius: 3,
+            },
+            android: {
+                elevation: 1,
+            },
+        }),
     },
     actionText: {
-        fontSize: 16,
         fontWeight: '600',
         marginLeft: 8,
+        fontSize: 16,
     },
+    editButton: {},
     editText: {
         color: Colors.primary.main,
+    },
+    saveButton: {},
+    saveText: {
+        color: Colors.primary.main,
+    },
+    deleteButton: {
+        borderWidth: 1,
+        borderColor: Colors.status.error,
     },
     deleteText: {
         color: Colors.status.error,
@@ -263,7 +344,7 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 16,
+        padding: 32,
     },
     notFoundText: {
         fontSize: 18,
@@ -271,6 +352,6 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     backButton: {
-        width: 200,
+        marginTop: 16,
     },
 });
