@@ -19,25 +19,21 @@ import { Colors } from '@/constants/Colors';
 
 const logo = require('@/assets/images/icon.png');
 export default function LoginScreen() {
-    const [email, setEmail] = useState('');
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+    const [errors, setErrors] = useState<{ username?: string; password?: string }>({});
 
     const { login, isLoading } = useAuthStore();
 
     const validateForm = () => {
-        const newErrors: { email?: string; password?: string } = {};
+        const newErrors: { username?: string; password?: string } = {};
 
-        if (!email) {
-            newErrors.email = 'Email is required';
-        } else if (!/\S+@\S+\.\S+/.test(email)) {
-            newErrors.email = 'Email is invalid';
+        if (!username) {
+            newErrors.username = 'Username is required';
         }
 
         if (!password) {
             newErrors.password = 'Password is required';
-        } else if (password.length < 6) {
-            newErrors.password = 'Password must be at least 6 characters';
         }
 
         setErrors(newErrors);
@@ -48,11 +44,10 @@ export default function LoginScreen() {
         if (!validateForm()) return;
 
         try {
-            await login(email, password);
+            await login(username, password);
             router.replace('/(tabs)');
         } catch (error) {
-            console.error('Login error:', error);
-            setErrors({ email: 'Invalid email or password' });
+            setErrors({ username: 'Invalid username or password' });
         }
     };
 
@@ -78,14 +73,13 @@ export default function LoginScreen() {
 
                 <View style={styles.form}>
                     <Input
-                        label="Email"
-                        placeholder="Enter email"
-                        value={email}
-                        onChangeText={setEmail}
-                        keyboardType="email-address"
+                        label="Username"
+                        placeholder="Enter username"
+                        value={username}
+                        onChangeText={setUsername}
                         autoCapitalize="none"
                         leftIcon={<Mail size={20} color={Colors.text.secondary} />}
-                        error={errors.email}
+                        error={errors.username}
                     />
 
                     <Input

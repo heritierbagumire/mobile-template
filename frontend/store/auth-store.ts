@@ -2,13 +2,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { User } from '@/types/user';
+import axios from 'axios';
 
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, name: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -19,50 +19,25 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       
-      login: async (email, password) => {
+      login: async (username, password) => {
         set({ isLoading: true });
-        
         try {
-          // Simulate API call
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Mock user data
-          const user: User = {
-            id: '1',
-            email,
-            name: email.split('@')[0],
-          };
-          
+          const response = await axios.get(`https://67ac71475853dfff53dab929.mockapi.io/api/v1/users?username=${username}`);
+          const users: User[] = response.data;
+          if (users.length === 0) {
+            throw new Error('User not found');
+          }
+          const user = users[0];
+          if (user.password !== password) {
+            throw new Error('Invalid password');
+          }
           set({ user, isAuthenticated: true, isLoading: false });
         } catch (error) {
-          console.error('Login error:', error);
           set({ isLoading: false });
           throw error;
         }
       },
-      
-      signup: async (email, password, name) => {
-        set({ isLoading: true });
-        
-        try {
-          // Simulate API call
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Mock user data
-          const user: User = {
-            id: '1',
-            email,
-            name: name || email.split('@')[0],
-          };
-          
-          set({ user, isAuthenticated: true, isLoading: false });
-        } catch (error) {
-          console.error('Signup error:', error);
-          set({ isLoading: false });
-          throw error;
-        }
-      },
-      
+
       logout: () => {
         set({ user: null, isAuthenticated: false });
       },

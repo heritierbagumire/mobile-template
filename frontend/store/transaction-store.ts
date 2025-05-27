@@ -1,85 +1,65 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { Transaction, TransactionType, CategoryType } from '@/types/transaction';
-import { MOCK_TRANSACTIONS } from '@/mock/transactions'; 
+import axios from 'axios';
 
-interface TransactionState {
-  transactions: Transaction[];
-  isLoading: boolean;
-  addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
-  updateTransaction: (id: string, transaction: Partial<Transaction>) => void;
-  deleteTransaction: (id: string) => void;
-  getTransactionsByType: (type: TransactionType) => Transaction[];
-  getTransactionsByCategory: (category: CategoryType) => Transaction[];
-  getTotalBalance: () => number;
-  getTotalIncome: () => number;
-  getTotalExpenses: () => number;
+export interface Expense {
+  id: string;
+  name: string;
+  amount: string;
+  description: string;
+  createdAt?: string;
 }
 
-export const useTransactionStore = create<TransactionState>()(
+interface ExpenseState {
+  expenses: Expense[];
+  isLoading: boolean;
+  fetchExpenses: () => Promise<void>;
+  addExpense: (expense: Omit<Expense, 'id' | 'createdAt'>) => Promise<void>;
+  deleteExpense: (id: string) => Promise<void>;
+}
+
+export const useExpenseStore = create<ExpenseState>()(
   persist(
     (set, get) => ({
-      transactions: MOCK_TRANSACTIONS,
+      expenses: [],
       isLoading: false,
-      
-      addTransaction: (transaction) => {
-        const newTransaction: Transaction = {
-          ...transaction,
-          id: Date.now().toString(),
-        };
-        
-        set(state => ({
-          transactions: [newTransaction, ...state.transactions],
-        }));
+
+      fetchExpenses: async () => {
+        set({ isLoading: true });
+        try {
+          const response = await axios.get('https://67ac71475853dfff53dab929.mockapi.io/api/v1/expenses');
+          set({ expenses: response.data, isLoading: false });
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
       },
-      
-      updateTransaction: (id, updatedTransaction) => {
-        set(state => ({
-          transactions: state.transactions.map(transaction => 
-            transaction.id === id 
-              ? { ...transaction, ...updatedTransaction } 
-              : transaction
-          ),
-        }));
+
+      addExpense: async (expense) => {
+        set({ isLoading: true });
+        try {
+          const response = await axios.post('https://67ac71475853dfff53dab929.mockapi.io/api/v1/expenses', expense);
+          set({ expenses: [response.data, ...get().expenses], isLoading: false });
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
       },
-      
-      deleteTransaction: (id) => {
-        set(state => ({
-          transactions: state.transactions.filter(transaction => transaction.id !== id),
-        }));
-      },
-      
-      getTransactionsByType: (type) => {
-        return get().transactions.filter(transaction => transaction.type === type);
-      },
-      
-      getTransactionsByCategory: (category) => {
-        return get().transactions.filter(transaction => transaction.category === category);
-      },
-      
-      getTotalBalance: () => {
-        return get().transactions.reduce((total, transaction) => {
-          return transaction.type === 'income' 
-            ? total + transaction.amount 
-            : total - transaction.amount;
-        }, 0);
-      },
-      
-      getTotalIncome: () => {
-        return get().transactions
-          .filter(transaction => transaction.type === 'income')
-          .reduce((total, transaction) => total + transaction.amount, 0);
-      },
-      
-      getTotalExpenses: () => {
-        return get().transactions
-          .filter(transaction => transaction.type === 'expense')
-          .reduce((total, transaction) => total + transaction.amount, 0);
+
+      deleteExpense: async (id) => {
+        set({ isLoading: true });
+        try {
+          await axios.delete(`https://67ac71475853dfff53dab929.mockapi.io/api/v1/expenses/${id}`);
+          set({ expenses: get().expenses.filter(exp => exp.id !== id), isLoading: false });
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
       },
     }),
     {
-      name: 'transaction-storage',
+      name: 'expense-storage',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )
